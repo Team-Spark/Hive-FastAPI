@@ -5,6 +5,7 @@ from starlette.responses import JSONResponse
 from pydantic import EmailStr, BaseModel
 from typing import List
 from pathlib import Path
+from utils import config
 
 
 
@@ -13,13 +14,13 @@ class EmailSchema(BaseModel):
    email: List[EmailStr]
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = "okechukwusamuel16@gmail.com",
-    MAIL_PASSWORD = "xsmtpsib-aec1862e5aa1d60c5ee87526ef56eb58515110f5a9350c088a0d38d1f5dc45b9-Zj8zMnPKIWD0gFV2",
-    MAIL_FROM = "no-reply@sendinblue.com",
-    MAIL_PORT = 587,
-    MAIL_SERVER = "smtp-relay.sendinblue.com",
-    MAIL_TLS = True,
-    MAIL_SSL = False,
+    MAIL_USERNAME = config.MAIL_USERNAME,
+    MAIL_PASSWORD = config.MAIL_PASSWORD,
+    MAIL_FROM = config.MAIL_FROM,
+    MAIL_PORT = config.MAIL_PORT,
+    MAIL_SERVER = config.MAIL_SERVER,
+    MAIL_TLS = config.MAIL_TLS,
+    MAIL_SSL = config.MAIL_SSL,
     TEMPLATE_FOLDER = Path(__file__).parent / 'templates',
 )
 

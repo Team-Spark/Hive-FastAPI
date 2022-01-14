@@ -37,10 +37,6 @@ class ConnectionManager:
             await connection.send_json(message)
 manager = ConnectionManager()
 
-ObjectId
-# @socket.get("/")
-# async def get():
-#     return HTMLResponse(html)
 
 @socket.websocket("/ws/room/{short_id}")
 async def websocket_endpoint(

@@ -10,14 +10,13 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from db.schemas.user import auth_serializer, serialize_dict, serialize_list
-from dotenv import load_dotenv
-load_dotenv()
+from utils import config
 
 from db.config.db import db as hive_db
 
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = str(os.getenv('SECRET_KEY'))
+SECRET_KEY = str(config.SECRET_KEY)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
