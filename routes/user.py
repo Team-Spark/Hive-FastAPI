@@ -12,6 +12,7 @@ from db.schemas.user import serialize_dict, serialize_list
 from mail.mail_service import send_activation_email, send_reset_password_email
 from starlette.responses import JSONResponse
 from utils.config import BACKEND_URL
+from pymongo.errors import DuplicateKeyError
 
 user = APIRouter(tags=["Auth 🔐"],)
 
@@ -102,7 +103,10 @@ async def create_user(reg: UserReg):
     access_token = create_access_token(
         data={"sub": reg.username}, expires_delta=access_token_expires
     )
-    db.users.insert_one(data)
+    try:
+        db.users.insert_one(data)
+    except DuplicateKeyError:
+        return JSONResponse({'message': 'username or email already exists'}, status_code=status.HTTP_400_BAD_REQUEST)
     try: 
         await send_activation_email(reg.email, {
         'url': BACKEND_URL,
@@ -125,9 +129,10 @@ async def verify_email(token: str):
             return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
         verification = {'is_verified': True}
         db.users.find_one_and_update({"email": email}, {"$set": verification})
+        return {"message": "verification succesfull"}
     except JWTError:
         return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
-    return {"message": "verification succesfull"}
+    
         
 @user.post('/api/v1/auth/resend-verification-email/{email}', status_code=status.HTTP_200_OK)
 async def resend_verification_email(email: str):
