@@ -4,7 +4,7 @@ from routes.room import room
 from routes.websocket import socket
 from core.config import Settings
 from functools import lru_cache
-from websocket_helper import na
+
 import socketio
 from routes.socket_io import sio
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +38,6 @@ app.add_middleware(
 app.include_router(user)
 app.include_router(room)
 app.include_router(socket)
-app.include_router(na)
 
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
