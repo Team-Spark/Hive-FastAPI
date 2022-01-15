@@ -39,4 +39,16 @@ async def send_activation_email(email: str, body: dict):
     fm = FastMail(conf)
     await fm.send_message(message, template_name="activation_email.html")
 
+async def send_reset_password_email(email: str, body: dict):
+    message = MessageSchema(
+        
+        subject="Reset Your Password",
+        recipients=[email],  # List of recipients, as many as you can pass
+        template_body=body
+        )
+ 
+    fm = FastMail(conf)
+    await fm.send_message(message, template_name="reset_password_email.html")
+
+
     

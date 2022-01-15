@@ -7,7 +7,7 @@ from functools import lru_cache
 from websocket_helper import na
 import socketio
 from routes.socket_io import sio
-
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(
     title="Hive",
     description="Hive Apis",
@@ -22,6 +22,19 @@ app = FastAPI(
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },)
+
+
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(user)
 app.include_router(room)
 app.include_router(socket)

@@ -9,9 +9,11 @@ from db.models.user import User
 from db.config.db import db
 from fastapi_mail.errors import ConnectionErrors
 from db.schemas.user import serialize_dict, serialize_list
-from mail.mail_service import send_activation_email
+from mail.mail_service import send_activation_email, send_reset_password_email
 from starlette.responses import JSONResponse
-user = APIRouter()
+from utils.config import BACKEND_URL
+
+user = APIRouter(tags=["Auth 🔐"],)
 
 class UserReg(User):
     password: str
@@ -23,6 +25,9 @@ class UserLogin(BaseModel):
 class RegRes(BaseModel):
     message: str
     user: User
+
+class ResetPassword(BaseModel):
+    password: str
 
 
 
@@ -100,6 +105,7 @@ async def create_user(reg: UserReg):
     db.users.insert_one(data)
     try: 
         await send_activation_email(reg.email, {
+        'url': BACKEND_URL,
         'username': reg.username,
         'token': access_token
     })
@@ -137,22 +143,58 @@ async def resend_verification_email(email: str):
             return JSONResponse({'message': 'user already verified'}, status_code=status.HTTP_208_ALREADY_REPORTED)
         try: 
             await send_activation_email(email, {
+            'url': BACKEND_URL,
             'username': user['username'],
             'token': access_token
             })
 
 
-        except ConnectionErrors:
-            return JSONResponse({'message': 'failed to send email due to smtp connection errors'}, status_code=status.HTTP_400_BAD_REQUEST)
+        except ConnectionErrors as e:
+            return JSONResponse({'message': f'failed to send email due to smtp connection errors: {e}'}, status_code=status.HTTP_400_BAD_REQUEST)
         return {'message': "verification email sent"}
     else:
         return JSONResponse({'message': "email doesn't exist"}, status_code=status.HTTP_400_BAD_REQUEST)
 
+
+@user.post('/api/v1/auth/forgot-password/{email}', status_code=status.HTTP_200_OK)
+async def forgot_password(email: str):
+    user = db.users.find_one({'email':email})
+    if user:
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": email}, expires_delta=access_token_expires
+        )
+        try: 
+            await send_reset_password_email(email, {
+            'url': BACKEND_URL,
+            'username': user['username'],
+            'token': access_token
+            })
+
+        except ConnectionErrors:
+            return JSONResponse({'message': 'failed to send email due to smtp connection errors'}, status_code=status.HTTP_400_BAD_REQUEST)
+        return {'message': "reset password email sent"}
+    else:
+        return JSONResponse({'message': f"user with email {email} doesn't exist"}, status_code=status.HTTP_400_BAD_REQUEST)
+
+
+
+@user.put('/api/v1/auth/reset-password/{token}', status_code=status.HTTP_200_OK)
+async def reset_password(token: str, reset: ResetPassword):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return JSONResponse({'message': 'reset password failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
+        data = {"hashed_password": get_password_hash(reset.password)}
+        db.users.find_one_and_update({"email": email}, {"$set": data})
+    except JWTError:
+        return JSONResponse({'message': 'reset password failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
+    return {"message": "password reset succesful"}
+
+
         
-# @user.get('/test')
-# async def test(request: Request, current_user: User = Depends(get_current_user)):
-#     res = jsonable_encoder(request.headers)
-#     return res
+
 
 
 
