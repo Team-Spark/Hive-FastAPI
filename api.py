@@ -5,6 +5,8 @@ from routes.websocket import socket
 from core.config import Settings
 from functools import lru_cache
 from websocket_helper import na
+import socketio
+from routes.socket_io import sio
 
 app = FastAPI(
     title="Hive",
@@ -25,6 +27,5 @@ app.include_router(room)
 app.include_router(socket)
 app.include_router(na)
 
-# @lru_cache()
-# def get_settings():
-#     return Settings()
+socket_app = socketio.ASGIApp(sio)
+app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
