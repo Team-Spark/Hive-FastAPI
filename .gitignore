@@ -3,3 +3,4 @@ __pycache__
 helper.py 
 websocket_helper.py
 install-mongo (1).sh
+manage.py
