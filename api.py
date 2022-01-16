@@ -4,6 +4,7 @@ from routes.room import room
 from routes.websocket import socket
 from core.config import Settings
 from functools import lru_cache
+from db.models.user import User
 
 import socketio
 from routes.socket_io import sio
@@ -41,3 +42,7 @@ app.include_router(socket)
 
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
+
+@app.on_event("startup")
+async def startup():
+    User.init()
