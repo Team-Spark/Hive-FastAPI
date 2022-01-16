@@ -10,7 +10,7 @@ from db.config.db import db
 from datetime import datetime
 from utils.utils import generate_short_id
 
-room = APIRouter()
+room = APIRouter(tags=["Room 🧑‍🤝‍🧑💬"])
 class RoomCreate(Room):
     creator: str
     short_id: str

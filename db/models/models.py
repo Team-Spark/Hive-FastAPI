@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 class Room(BaseModel):
     room_name: str
@@ -8,9 +9,11 @@ class Room(BaseModel):
 
 
 class Message(BaseModel):
-    room: str
+    author: Optional[str]
+    room: Optional[str]
     content: str
     media_url: Optional[str]
+    timestamp: Optional[datetime] 
 
 class Chat(BaseModel):
     sender: str

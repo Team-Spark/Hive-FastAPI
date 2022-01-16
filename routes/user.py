@@ -1,208 +1,90 @@
-from fastapi import APIRouter, Request
-from datetime import datetime
-from fastapi.encoders import jsonable_encoder
-from db.scripts.dbservice import *
-from pymongo import message
-from auth.oauth import *
-from bson import ObjectId, objectid
-from db.models.user import User
+from fastapi import APIRouter
+from auth.oauth import UserInDB, get_current_user
+from fastapi import Depends
 from db.config.db import db
-from fastapi_mail.errors import ConnectionErrors
-from db.schemas.user import serialize_dict, serialize_list
-from mail.mail_service import send_activation_email, send_reset_password_email
-from starlette.responses import JSONResponse
-from utils.config import BACKEND_URL
+from fastapi.responses import JSONResponse
+from fastapi import status
+from pydantic import BaseModel
+from db.models.user import User
+from typing import List, Optional
 from pymongo.errors import DuplicateKeyError
 
-user = APIRouter(tags=["Auth 🔐"],)
 
-class UserReg(User):
-    password: str
+user = APIRouter(tags=["User 👤"],)
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
+class Friends(BaseModel):
+    users: list[str]
 
-class RegRes(BaseModel):
+class AddFriends(BaseModel):
     message: str
-    user: User
+    successful: list[str]
+    failed: dict
 
-class ResetPassword(BaseModel):
-    password: str
+class UserUpdate(BaseModel):
+    username: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    image_url: Optional[str]
+    about: Optional[str]
 
-
-
-@user.post("/api/v1/auth/login", response_model=Token)
-async def login_for_access_token(data: UserLogin):
-    user = authenticate_user(db, data.username, data.password)
-    if not user:
-        return JSONResponse(
-            {"message":"Incorrect username or password"},
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if user.is_verified == False:
-        return JSONResponse(
-            {"message":"email not verified"},
-            status_code=status.HTTP_400_BAD_REQUEST,
-            
-            
-        )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer", "expires": f"{ACCESS_TOKEN_EXPIRE_MINUTES}"}
-
-@user.post("/token", response_model=Token)
-async def login_for_access_token(data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(db, data.username, data.password)
-    if not user:
-        return JSONResponse(
-            {"message":"Incorrect username or password"},
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if user.is_verified == False:
-        return JSONResponse(
-            {"message":"email not verified"},
-            status_code=status.HTTP_400_BAD_REQUEST,
-            
-            
-        )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer", "expires": f"{ACCESS_TOKEN_EXPIRE_MINUTES}"}
+class UpdateRes(BaseModel):
+    message: str
+    user: UserUpdate
 
 
 
-@user.post('/api/v1/auth/register', status_code=status.HTTP_201_CREATED, response_model=RegRes)
-async def create_user(reg: UserReg):
-    if db.users.find_one({'username':reg.username}): 
-        return JSONResponse({'message': 'username already exists'}, status_code=status.HTTP_400_BAD_REQUEST)
-    elif db.users.find_one({'email':reg.email}):
-        return JSONResponse({'message': 'email already exists'}, status_code=status.HTTP_400_BAD_REQUEST)
-    data = {
-        "username": reg.username,
-        "first_name": reg.first_name,
-        'last_name': reg.last_name,
-        "email": reg.email,
-        "hashed_password": get_password_hash(reg.password),
-        'image_url': reg.image_url,
-        "is_verified": False,
-        "created_at": datetime.now()
-    }
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": reg.username}, expires_delta=access_token_expires
-    )
+@user.post('/api/v1/user/friends', response_model=AddFriends)
+async def add_friends(friends: Friends, user: UserInDB = Depends(get_current_user)):
+    current_friends = user.friends
+    new_friends =  friends.users
+    successful = []
+    failed = {}
+    for username in new_friends:
+        if username == user.username:
+            failed[username] = "Can't add yourself boss" 
+            continue
+        if username in current_friends:
+            failed[username] = "Already in friend list"
+            continue
+        
+        friend = db.users.find_one({'username': username})
+        if friend:
+            current_friends.append(username)
+            db.users.find_one_and_update({'username': user.username}, {'$set': {"friends": current_friends}})
+            successful.append(username)
+            continue
+        failed[username] = "no such user"
+    return JSONResponse({'message': 'Done', "successful": successful, 'failed': failed}, status_code=status.HTTP_200_OK)
+
+
+
+@user.get('/api/v1/user/friends', response_model=List[User])
+async def get_friends(user: UserInDB = Depends(get_current_user)):
+    current_friends = user.friends
+    response = []
+    for username in current_friends:
+        user =  db.users.find_one({'username': username})
+        response.append(User(**user))
+    return response
+
+
+
+@user.put('/api/v1/user/update-profile', response_model=UpdateRes)
+async def update_profile(update: UserUpdate, user: UserInDB = Depends(get_current_user)):
+    data = dict(update)
+    if data['username'] == user.username:
+        del data['username']
+    cleaned_data = data.copy()
+    for datum in data:
+        if data[datum] == None :
+            del cleaned_data[datum]
+    if 'username' in cleaned_data:
+        existing_user = db.users.find_one({'username': cleaned_data['username']})
+        if existing_user:
+            return JSONResponse({'message': "username already exists"}, status_code=status.HTTP_208_ALREADY_REPORTED)
     try:
-        db.users.insert_one(data)
+        updated_user = db.users.find_one_and_update({"username": user.username}, {'$set': cleaned_data})
     except DuplicateKeyError:
-        return JSONResponse({'message': 'username or email already exists'}, status_code=status.HTTP_400_BAD_REQUEST)
-    try: 
-        await send_activation_email(reg.email, {
-        'url': BACKEND_URL,
-        'username': reg.username,
-        'token': access_token
-    })
-
-    except ConnectionErrors:
-        return JSONResponse({'message': 'failed to send email due to smtp connection errors'}, status_code=status.HTTP_400_BAD_REQUEST)
+        return JSONResponse({'message': "username already exists"}, status_code=status.HTTP_208_ALREADY_REPORTED)
+    return {"message": "User update successful", 'user': UserUpdate(**updated_user)}
     
-    return {'message': 'Registration succesful, check email', 'user': serialize_dict(db.users.find_one({'username': reg.username}))}
-
-
-@user.get('/api/v1/auth/verify-email/{token}', status_code=status.HTTP_200_OK)
-async def verify_email(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
-        verification = {'is_verified': True}
-        db.users.find_one_and_update({"email": email}, {"$set": verification})
-        return {"message": "verification succesfull"}
-    except JWTError:
-        return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
-    
-        
-@user.post('/api/v1/auth/resend-verification-email/{email}', status_code=status.HTTP_200_OK)
-async def resend_verification_email(email: str):
-    user = db.users.find_one({'email':email})
-    if user:
-
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": email}, expires_delta=access_token_expires
-        )
-        user = serialize_dict(db.users.find_one({'email':email}))
-        if user['is_verified']:
-            return JSONResponse({'message': 'user already verified'}, status_code=status.HTTP_208_ALREADY_REPORTED)
-        try: 
-            await send_activation_email(email, {
-            'url': BACKEND_URL,
-            'username': user['username'],
-            'token': access_token
-            })
-
-
-        except ConnectionErrors as e:
-            return JSONResponse({'message': f'failed to send email due to smtp connection errors: {e}'}, status_code=status.HTTP_400_BAD_REQUEST)
-        return {'message': "verification email sent"}
-    else:
-        return JSONResponse({'message': "email doesn't exist"}, status_code=status.HTTP_400_BAD_REQUEST)
-
-
-@user.post('/api/v1/auth/forgot-password/{email}', status_code=status.HTTP_200_OK)
-async def forgot_password(email: str):
-    user = db.users.find_one({'email':email})
-    if user:
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": email}, expires_delta=access_token_expires
-        )
-        try: 
-            await send_reset_password_email(email, {
-            'url': BACKEND_URL,
-            'username': user['username'],
-            'token': access_token
-            })
-
-        except ConnectionErrors:
-            return JSONResponse({'message': 'failed to send email due to smtp connection errors'}, status_code=status.HTTP_400_BAD_REQUEST)
-        return {'message': "reset password email sent"}
-    else:
-        return JSONResponse({'message': f"user with email {email} doesn't exist"}, status_code=status.HTTP_400_BAD_REQUEST)
-
-
-
-@user.put('/api/v1/auth/reset-password/{token}', status_code=status.HTTP_200_OK)
-async def reset_password(token: str, reset: ResetPassword):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            return JSONResponse({'message': 'reset password failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
-        data = {"hashed_password": get_password_hash(reset.password)}
-        db.users.find_one_and_update({"email": email}, {"$set": data})
-    except JWTError:
-        return JSONResponse({'message': 'reset password failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
-    return {"message": "password reset succesful"}
-
-
-        
-
-
-
-
-
-
-

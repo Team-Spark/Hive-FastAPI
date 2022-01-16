@@ -1,7 +1,9 @@
 from fastapi import FastAPI
-from routes.user import user
+from routes.auth import user
 from routes.room import room
+from routes.user import user as user_actions
 from routes.websocket import socket
+from routes.chat import chat
 from core.config import Settings
 from functools import lru_cache
 from db.models.user import User
@@ -39,6 +41,8 @@ app.add_middleware(
 app.include_router(user)
 app.include_router(room)
 app.include_router(socket)
+app.include_router(user_actions)
+app.include_router(chat)
 
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)  # Here we mount socket app to main fastapi app

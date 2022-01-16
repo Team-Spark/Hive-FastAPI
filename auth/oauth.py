@@ -53,6 +53,7 @@ class User(BaseModel):
 class UserInDB(User):
     hashed_password: str
     is_verified: bool
+    friends: list[str] = []
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -73,8 +74,8 @@ def get_password_hash(password):
 def get_user(db, username: str):
     user = db.users.find_one({'username': username})
     if user:
-        user_dict = auth_serializer(user)
-        return UserInDB(**user_dict)
+        # user_dict = auth_serializer(user)
+        return UserInDB(**user)
 
 
 def authenticate_user(db, username: str, password: str):
@@ -116,6 +117,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+async def get_sio_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return False
+        token_data = TokenData(username=username)
+    except JWTError:
+        return False
+    user = get_user(hive_db, username=token_data.username)
+    if user is None:
+        return False
+    return user
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
