@@ -4,3 +4,5 @@ helper.py
 websocket_helper.py
 install-mongo (1).sh
 manage.py
+testencode.py
+utils/select.html

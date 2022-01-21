@@ -1,4 +1,5 @@
 import socketio
+from routes.chat import MessageInDB
 from utils import config
 from typing import Any
 from auth.oauth import get_sio_user
@@ -41,7 +42,7 @@ async def print_message(sid, data):
                         "short_id": generate_short_id(),
                         "timestamp": datetime.now()
                     }
-    message_serialized = Message(**message_data)
+    message_serialized = MessageInDB(**message_data)
     db.messages.insert_one(dict(message_serialized))
     message_from_db = (db.messages.find_one({"short_id": message_data["short_id"]}))
     message = dict(Message(**message_from_db))

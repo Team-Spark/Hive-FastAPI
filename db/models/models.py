@@ -1,3 +1,4 @@
+from email import message
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -9,11 +10,8 @@ class Room(BaseModel):
 
 
 class Message(BaseModel):
-    author: Optional[str]
-    room: Optional[str]
-    content: str
+    message: str
     media_url: Optional[str]
-    timestamp: Optional[datetime] 
 
 class Chat(BaseModel):
     sender: str

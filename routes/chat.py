@@ -14,14 +14,20 @@ from typing import Optional
 chat = APIRouter(tags=["Chat 💬"],)
 
 class MessageInDB(Message):
+    room_short_id: str
+    author: str
     short_id: Optional[str]
+    timestamp: Optional[datetime] 
 
 class ChatInDB(Chat):
-    short_id: str
-    messages: list[Message] = []
+    type: str
+    room_short_id: str
+    messages: list[MessageInDB] = []
 
 class ChatRes(ChatInDB):
-    messages: list[Message]
+    messages: list[MessageInDB]
+
+
 
 
 
@@ -40,7 +46,8 @@ async def get_or_create_chat(username: str, user: UserInDB = Depends(get_current
             data = {
                 'sender': user.username,
                 'receiver': username,
-                'short_id': generate_short_id()
+                'type': 'chat',
+                'room_short_id': generate_short_id()
             }
             db.chats.insert_one(data)
             instance = db.chats.find_one({'short_id': data["short_id"]})
@@ -48,15 +55,20 @@ async def get_or_create_chat(username: str, user: UserInDB = Depends(get_current
         messages_from_db = db.messages.find({"room": chat_data.short_id})
         messages = []
         for datum in messages_from_db:
-            messages.append(Message(**datum))
+            messages.append(MessageInDB(**datum))
         chat_data.messages = messages
         return chat_data
     return JSONResponse({'message': "user does not exist"})
 
-@chat.post('/api/v1/chat/message/{short_id}')
-async def send_message(message: Message, short_id: str, user: UserInDB = Depends(get_current_user)):
-    message.author = user.username
-    message.room = short_id
-    message.timestamp = datetime.now()
+@chat.post('/api/v1/chat/message/{room_short_id}')
+async def send_message(message: Message, room_short_id: str, user: UserInDB = Depends(get_current_user)):
+    message_dict = {
+        'author': user.username,
+        'room_short_id': room_short_id,
+        'timestamp': datetime.now(),
+        'short_id': generate_short_id()
+    }
+
+    message= MessageInDB(**message.dict(), **message_dict)
     db.messages.insert_one(dict(message))
     return message
