@@ -20,10 +20,10 @@ sio: Any = socketio.AsyncServer(async_mode="asgi", client_manager=mgr, cors_allo
 async def connect(sid, env, auth):
     if auth:
         user = await get_sio_user(auth["token"])
-        short_id = auth['short_id']
+        room_short_id = auth['room_short_id']
         if user:
             print("SocketIO connect")
-            sio.enter_room(sid, str(short_id))
+            sio.enter_room(sid, str(room_short_id))
             await sio.emit("connect", f"User {user.username} connected as {sid}")
         else:
             raise ConnectionRefusedError("authentication failed")
@@ -34,14 +34,15 @@ async def connect(sid, env, auth):
 async def print_message(sid, data):
     print("Socket ID", sid)
     data = json.loads(data)
-    room = data['short_id']
+    room = data['room_short_id']
     message_data = {
                         "author": data["username"],
                         "message": data["message"],
-                        "room": data['short_id'],
+                        "room_short_id": data['room_short_id'],
                         "short_id": generate_short_id(),
                         "timestamp": datetime.now()
                     }
+                    
     message_serialized = MessageInDB(**message_data)
     db.messages.insert_one(dict(message_serialized))
     message_from_db = (db.messages.find_one({"short_id": message_data["short_id"]}))

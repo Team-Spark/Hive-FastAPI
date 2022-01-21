@@ -50,9 +50,9 @@ async def get_or_create_chat(username: str, user: UserInDB = Depends(get_current
                 'room_short_id': generate_short_id()
             }
             db.chats.insert_one(data)
-            instance = db.chats.find_one({'short_id': data["short_id"]})
+            instance = db.chats.find_one({'room_short_id': data["room_short_id"]})
         chat_data = ChatInDB(**instance)
-        messages_from_db = db.messages.find({"room": chat_data.short_id})
+        messages_from_db = db.messages.find({"room_short_id": chat_data.room_short_id})
         messages = []
         for datum in messages_from_db:
             messages.append(MessageInDB(**datum))
