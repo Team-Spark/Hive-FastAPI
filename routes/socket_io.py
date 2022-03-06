@@ -28,7 +28,8 @@ async def connect(sid, env, auth):
         else:
             raise ConnectionRefusedError("authentication failed")
     else:
-        raise ConnectionRefusedError("no auth token")
+        # raise ConnectionRefusedError("no auth token")
+        await sio.emit("connect", f"User test connected as {sid}")
 
 @sio.on('message')
 async def print_message(sid, data):

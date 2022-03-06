@@ -1,4 +1,3 @@
-from email import message
 from fastapi import APIRouter
 from auth.oauth import UserInDB, get_current_user
 from fastapi import Depends
@@ -122,14 +121,21 @@ async def change_password(passwords: ChangePassword, user: UserInDB = Depends(ge
 
 
 def get_last_message(room_short_id: str):
-    messages_in_db = db.messages.find({"room_short_id": room_short_id}) 
-    messages = [MessageInDB(**message).dict() for message in messages_in_db]
-    return messages[-1]
+    message = db.messages.find_one({"room_short_id": room_short_id}).sort({"timestamp":-1})
+    return MessageInDB(**message)
+
+    
 
 @user.get('/api/v1/user/get-rooms-and-chats')
 async def get_rooms_and_chats(user: UserInDB = Depends(get_current_user)):
     rooms_in_db = db.rooms.find({"members": user.username})
-    chats_in_db = db.chats.find({'$or': [{'receiver': user.username}, {"sender": user.username}]})
+    chats_in_db = db.chats.find( 
+                {'$or': [
+                    {'receiver': user.username}, 
+                    {"sender": user.username}
+                    ]
+                })
+
     rooms = [RoomInDB(**room).dict() for room in rooms_in_db]
     chats = [ChatInDB(**chat).dict() for chat in chats_in_db]
 
@@ -151,7 +157,7 @@ async def get_rooms_and_chats(user: UserInDB = Depends(get_current_user)):
     for item in user_rooms:
         last_message = get_last_message(item['room_short_id'])
         item["last_message"] = last_message
-        item["last_timestamp"] = last_message["timestamp"]
+        item["last_timestamp"] = last_message.timestamp
 
 
     sorted_list_by_last_message = sorted(user_rooms, key=itemgetter("last_timestamp"), reverse=True)

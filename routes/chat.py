@@ -66,7 +66,8 @@ async def send_message(message: Message, room_short_id: str, user: UserInDB = De
         'author': user.username,
         'room_short_id': room_short_id,
         'timestamp': datetime.now(),
-        'short_id': generate_short_id()
+        'short_id': generate_short_id(),
+        "message": message.message
     }
 
     message= MessageInDB(**message.dict(), **message_dict)
