@@ -108,7 +108,7 @@ async def create_user(reg: UserReg):
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": reg.username}, expires_delta=access_token_expires
+        data={"sub": reg.email}, expires_delta=access_token_expires
     )
     try:
         db.users.insert_one(data)
