@@ -135,10 +135,14 @@ async def verify_email(token: str):
         if email is None:
             return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
         verification = {'is_verified': True}
-        db.users.find_one_and_update({"email": email}, {"$set": verification})
-        return {"message": "verification succesfull"}
+        if db.users.find_one({"email": email}):
+            db.users.find_one_and_update({"email": email}, {"$set": verification})
+            return {"message": "verification succesful"}
+        else:
+            return {"message": "email doesn't exist in our database"}
     except JWTError:
         return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
+    
     
         
 @user.post('/api/v1/auth/resend-verification-email/{email}', status_code=status.HTTP_200_OK)
