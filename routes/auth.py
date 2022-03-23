@@ -139,7 +139,7 @@ async def verify_email(token: str):
             db.users.find_one_and_update({"email": email}, {"$set": verification})
             return {"message": "verification succesful"}
         else:
-            return {"message": "email doesn't exist in our database"}
+            return {"message": f"email: {email} doesn't exist in our database"}
     except JWTError:
         return JSONResponse({'message': 'verification failed, token expired'}, status_code=status.HTTP_400_BAD_REQUEST)
     
