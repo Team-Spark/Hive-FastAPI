@@ -33,6 +33,12 @@ class RegRes(BaseModel):
     message: str
     user: User
 
+class LoginRes(BaseModel):
+    message: str
+    user: User
+    access_token: str
+
+
 class ResetPassword(BaseModel):
     password: str
 
@@ -60,7 +66,7 @@ async def login_for_access_token(data: UserLogin):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "expires": f"{ACCESS_TOKEN_EXPIRE_MINUTES}"}
+    return {"message":"Login Successful", "user": user,  "access_token": access_token}
 
 @user.post("/token", response_model=Token)
 async def login_for_access_token(data: OAuth2PasswordRequestForm = Depends()):
