@@ -11,6 +11,7 @@ from db.models.user import User
 import socketio
 from routes.socket_io import sio
 from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Hive",
     description="Hive Apis",
@@ -24,8 +25,8 @@ app = FastAPI(
     license_info={
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    },)
-
+    },
+)
 
 
 origins = ["*"]
@@ -37,17 +38,18 @@ app.include_router(socket)
 app.include_router(user_actions)
 app.include_router(chat)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
+
 
 @app.on_event("startup")
 async def startup():
