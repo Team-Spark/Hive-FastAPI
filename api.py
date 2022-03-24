@@ -10,7 +10,6 @@ from db.models.user import User
 
 import socketio
 from routes.socket_io import sio
-from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
