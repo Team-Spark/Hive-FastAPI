@@ -15,46 +15,30 @@ from routes.socket_io import sio
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-# middleware = [
-#     Middleware(
-#         CORSMiddleware,
-#         allow_origins=['*'],
-#         allow_credentials=True,
-#         allow_methods=['*'],
-#         allow_headers=['*']
-#     )
-# ]
 
-app = FastAPI(
-    title="Hive",
-    description="Hive Apis",
-    version="0.0.1",
-    terms_of_service="http://example.com/terms/",
-    contact={
-        "name": "Deadpoolio the Amazing",
-        "url": "http://x-force.example.com/contact/",
-        "email": "dp@x-force.example.com",
-    },
-    license_info={
-        "name": "Apache 2.0",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    },
-)
+def create_app() -> CORSMiddleware:
+    """Create app wrapper to overcome middleware issues."""
+    fastapi_app = FastAPI(
+        title="Hive",
+        description="Hive Apis",
+        version="0.0.1",
+    )
+    fastapi_app.include_router(user)
+    fastapi_app.include_router(room)
+    fastapi_app.include_router(socket)
+    fastapi_app.include_router(user_actions)
+    fastapi_app.include_router(chat)
+
+    return CORSMiddleware(
+        fastapi_app,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
-origins = [
-    "https://localhost:3000",
-    "http://localhost:3000",
-    "https://localhost:3000/",
-    "https://localhost:3000/",
-]
-
-
-app.include_router(user)
-app.include_router(room)
-app.include_router(socket)
-app.include_router(user_actions)
-app.include_router(chat)
+app = create_app()
 
 
 socket_app = socketio.ASGIApp(sio)
@@ -67,12 +51,3 @@ async def startup():
 
 
 # or 'foo.com', etc.
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
