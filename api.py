@@ -10,18 +10,20 @@ from db.models.user import User
 
 import socketio
 from routes.socket_io import sio
+
+# from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-middleware = [
-    Middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-]
+# middleware = [
+#     Middleware(
+#         CORSMiddleware,
+#         allow_origins=['*'],
+#         allow_credentials=True,
+#         allow_methods=['*'],
+#         allow_headers=['*']
+#     )
+# ]
 
 app = FastAPI(
     title="Hive",
@@ -37,7 +39,6 @@ app = FastAPI(
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
-    middleware=middleware,
 )
 
 
@@ -58,3 +59,12 @@ app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
 @app.on_event("startup")
 async def startup():
     User.init()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
