@@ -30,6 +30,13 @@ app = FastAPI(
 
 origins = ["*"]
 
+
+app.include_router(user)
+app.include_router(room)
+app.include_router(socket)
+app.include_router(user_actions)
+app.include_router(chat)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -38,11 +45,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(user)
-app.include_router(room)
-app.include_router(socket)
-app.include_router(user_actions)
-app.include_router(chat)
 
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)  # Here we mount socket app to main fastapi app
