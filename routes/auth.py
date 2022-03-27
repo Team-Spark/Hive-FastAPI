@@ -48,7 +48,7 @@ class ResetPassword(BaseModel):
     password: str
 
 
-@user.post("/api/v1/auth/login", response_model=Token)
+@user.post("/api/v1/auth/login", response_model=LoginRes)
 async def login(data: UserLogin):
     user = authenticate_user(db, data.username, data.password)
     if not user:
@@ -67,6 +67,7 @@ async def login(data: UserLogin):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
+    print(user)
     return {"message": "Login Successful", "user": user, "access_token": access_token}
 
 

@@ -28,7 +28,7 @@ app.include_router(user_actions)
 app.include_router(chat)
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)
-origins = ["http://localhost:3000"]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,

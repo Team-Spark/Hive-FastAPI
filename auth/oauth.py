@@ -11,6 +11,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from db.schemas.user import auth_serializer, serialize_dict, serialize_list
 from utils import config
+from db.models.user import User
 
 from db.config.db import db as hive_db
 
@@ -43,11 +44,10 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
-class User(BaseModel):
-    username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
-    disabled: Optional[bool] = None
+# class User(BaseModel):
+#     username: str
+#     email: Optional[str] = None
+#     disabled: Optional[bool] = None
 
 
 class UserInDB(User):
@@ -61,8 +61,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-
-
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -72,7 +70,7 @@ def get_password_hash(password):
 
 
 def get_user(db, username: str):
-    user = db.users.find_one({'username': username})
+    user = db.users.find_one({"username": username})
     if user:
         # user_dict = auth_serializer(user)
         return UserInDB(**user)
@@ -117,6 +115,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+
 async def get_sio_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -131,13 +130,16 @@ async def get_sio_user(token: str = Depends(oauth2_scheme)):
         return False
     return user
 
+
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
-async def get_current_websocket_user(websocket: WebSocket, token: Optional[str] = Query(None)):
+async def get_current_websocket_user(
+    websocket: WebSocket, token: Optional[str] = Query(None)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -169,26 +171,22 @@ async def read_own_items(current_user: User = Depends(get_current_active_user)):
     return [{"item_id": "Foo", "owner": current_user.username}]
 
 
-
-
-@oauthroute.get('/users')
+@oauthroute.get("/users")
 async def find_all_users():
     return serialize_list(db.users.find())
 
-@oauthroute.get('/user/{id}')
+
+@oauthroute.get("/user/{id}")
 async def get_single_user(id: str):
     return serialize_dict(db.users.find_one({"_id": ObjectId(id)}))
 
 
-@oauthroute.put('/user/{id}')
+@oauthroute.put("/user/{id}")
 async def update_user(id: str, use: User):
-    db.users.find_one_and_update({"_id":ObjectId(id)}, {"$set": dict(use)})
+    db.users.find_one_and_update({"_id": ObjectId(id)}, {"$set": dict(use)})
     return serialize_dict(db.users.find_one({"_id": ObjectId}))
 
-@oauthroute.delete('/user/{id}')
+
+@oauthroute.delete("/user/{id}")
 async def delete_user(id: str):
     return serialize_dict(db.users.find_one_and_delete({"_id": ObjectId(id)}))
-
-
-
-
