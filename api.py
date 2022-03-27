@@ -28,14 +28,14 @@ app.include_router(user_actions)
 app.include_router(chat)
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 
