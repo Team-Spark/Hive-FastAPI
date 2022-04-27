@@ -4,6 +4,7 @@ from routes.room import room
 from routes.user import user as user_actions
 from routes.websocket import socket
 from routes.chat import chat
+from routes.people import people
 from core.config import Settings
 from functools import lru_cache
 from db.models.user import User
@@ -26,6 +27,7 @@ app.include_router(room)
 app.include_router(socket)
 app.include_router(user_actions)
 app.include_router(chat)
+app.include_router(people)
 socket_app = socketio.ASGIApp(sio)
 app.mount("/", socket_app)
 origins = ["*"]
